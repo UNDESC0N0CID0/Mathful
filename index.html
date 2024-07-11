@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathful Hackatón Vercel</title>
+    <!-- Incluir Mathlive desde una CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.css">
+    <script src="https://unpkg.com/mathlive/dist/mathlive.min.js"></script>
+    <!-- Incluir Desmos desde una CDN -->
+    <script src="https://www.desmos.com/api/v1.5/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+
+    <!-- Texto matemáticos -->
+    <!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- UUID -->
+    <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuid.min.js"></script>
+</head>
+
+<body>
+    <h1>Mathful</h1>
+    <!-- Campo de texto Mathlive -->
+    <math-field id="mathfield"></math-field>
+    <div>
+        <input type="text" placeholder="Contexto" id="mathfield">
+        <button onclick="printMathFieldValue()">Enviar</button>
+    </div>
+    <div id="steep-by-steep"></div>
+    <div id="calculator" style="width: 600px; height: 400px;"></div>
+    <script>
+        function extractJSONFromString(input) {
+            // Expresión regular para extraer el bloque de JSON
+            const regex = /```json\s*([\s\S]*?)\s*```/;
+            const match = input.match(regex);
+
+            if (match) {
+                const jsonStr = match[1];
+                try {
+                    // Convertir la cadena JSON en un objeto JavaScript
+                    const jsonObj = JSON.parse(jsonStr.replace(/'/g, '"')); // Reemplazar comillas simples por dobles
+                    return jsonObj;
+                } catch (error) {
+                    console.error("Error al decodificar JSON:", error);
+                }
+            }
+            return null;
+        }
+        function printResult(message) {
+            var myUUID = uuid.v4();
+            const myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+
+            const raw = JSON.stringify({
+                "message": message
+            });
+
+            const requestOptions = {
+                method: "POST",
+                headers: myHeaders,
+                body: raw,
+                redirect: "follow"
+            };
+            fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
+                .then((response) => response.text())
+                .then(rawData => {
+                    const div = document.getElementById('steep-by-steep');
+                    const data = JSON.parse(rawData);
+                    let show = data.response.replace('```html', '');
+                    show = show.replace('```', '');
+                    div.innerHTML = show; // Inserta el contenido en el div
+                    // Recargar MathJax para procesar las nuevas ecuaciones
+                    MathJax.typesetPromise([div]).catch(function (err) {
+                        console.error('MathJax error: ', err.message);
+                    });
+
+                    console.log('data.response', data.response);
+                }).catch((error) => console.error(error));
+        }
+        function printMathFieldValue() {
+            const mathfield = document.getElementById('mathfield');
+            printResult(mathfield.value)
+        }
+    </script>
+    <style>
+        #mathfield {
+            width: 100%;
+            height: auto;
+            font-size: 20px;
+            border: 1px solid #ccc;
+            padding: 5px;
+        }
+    </style>
+    <!-- Inicializar Desmos -->
+    <script>
+        var elt = document.getElementById('calculator');
+        var calculator = Desmos.GraphingCalculator(elt);
+        calculator.setExpression({ id: 'graph1', latex: 'y=x^3' });
+        calculator.setExpression({ id: 'graph2', latex: 'y=x^2' });
+        calculator.setExpression({ id: 'graph3', latex: 'y=x' });
+        calculator.setExpression({ id: 'graph1', latex: 'y=x^3' });
+        ```json [ { "id": "graph1", "latex": "y=sin(x)" }, { "id": "graph2", "latex": "y=-sin(x)" } ] ```
+
+    </script>
+</body>
+
+</html>
