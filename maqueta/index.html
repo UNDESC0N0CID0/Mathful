@@ -31,7 +31,6 @@
 <body>
     <script>
         function remove() {
-            // document.getElementById("text").value = "";
             const mathfield = document.getElementById('mathfield');
             mathfield.value = '';
             const context = document.getElementById('context');
@@ -106,65 +105,18 @@
 
                     console.log('data.response', data.response);
                 }).catch((error) => console.error(error));
-            // .then(response => {
-            //     if (!response.ok) {
-            //         throw new Error(`HTTP error! status: ${response.status}`);
-            //     }
-            //     return response.json();
-            // })
-            // .then(data => {
-            //     const div = document.getElementById('steep-by-steep');
-            //     let show = data.response.replace(/```(html)?|```/g, '').trim();
-
-            //     // Usar una función de sanitización aquí si es necesario renderizar HTML
-            //     div.textContent = show; // Más seguro que innerHTML
-
-            //     // Recargar MathJax para procesar las nuevas ecuaciones
-            //     MathJax.typesetPromise([div]).catch(err => {
-            //         console.error('MathJax error: ', err.message);
-            //     });
-
-            //     console.log('data.response', data.response);
-            // })
-            // .catch(error => {
-            //     console.error('Fetch error:', error.message);
-            //     // Aquí podrías añadir código para mostrar un mensaje de error al usuario
-            // });
-            // fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
-            //     .then((response) => response.text())
-            //     .then(rawData => {
-            //         const div = document.getElementById('steep-by-steep');
-            //         const data = JSON.parse(rawData);
-            //         let show = data.response.replace('```html', '');
-            //         show = show.replace('```', '');
-            //         div.innerHTML = show; // Inserta el contenido en el div
-            //         // Recargar MathJax para procesar las nuevas ecuaciones
-            //         MathJax.typesetPromise([div]).catch(function (err) {
-            //             console.error('MathJax error: ', err.message);
-            //         });
-
-            //         console.log('data.response', data.response);
-            //     }).catch((error) => console.error(error));
         }
-        console.log('Hola');
     </script>
     <div class="flex justify-center items-center flex-col w-full lg:p-0 p-4 sm:mb-28 mb-0">
         <h1 class="text-3xl font-bold mt-10">Resuelve problemas matemáticos paso a paso</h1>
         <div class="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mt-10">
             <div class="col-span-1">
-                <!-- <form> -->
                 <div class="flex flex-col gap-4">
                     <div class="space-y-2"><label
                             class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                             for=":r0:-form-item">Problema</label>
-                        <!-- <input
-                                class="flex h-10 w-full rounded-md  ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="roomgpt.io" id=":r0:-form-item"
-                                aria-describedby=":r0:-form-item-description" aria-invalid="false" value="" name="url"> -->
                         <math-field id="mathfield"
                             class="w-100 border border-input bg-background px-3 py-2 text-sm rounded-md"></math-field>
-                        <!-- <math-field id="mathfield"
-                            class="keyboard flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"></math-field> -->
                         <p id=":r0:-form-item-description" class="text-sm text-muted-foreground">Escriba el problema
                             a resolver paso a paso</p>
                     </div>
@@ -188,12 +140,11 @@
                             type="submit">Limpiar</button>
                     </div>
                 </div>
-                <!-- </form> -->
             </div>
             <div class="col-span-1">
                 <zwibbler z-controller="mycontroller">
                     <div z-canvas style="max-height:300px"></div>
-                    <button id="zwibbler-check" z-click="myCheck()">Verificar</button>
+                    <button id="zwibbler-check" z-click="myCheck()"></button>
                     <button id="zwibbler-clear" onclick="remove()" z-click="ctx.newDocument()"></button>
                 </zwibbler>
 
@@ -207,8 +158,6 @@
                 <div id="calculator" style="width: 550; height: 400px;"></div>
             </div>
         </div>
-        <!-- Comenta o elimina el siguiente div si quieres ver el primer div ocupando todo el espacio -->
-        <!-- <div style="position: fixed; z-index: 9999; inset: 16px; pointer-events: none;"></div> -->
     </div>
 </body>
 
@@ -226,7 +175,6 @@
 
         scope.mySave = () => {
             saved = ctx.save();
-            alert("Guardado: " + saved);
         }
 
         scope.myOpen = () => {
@@ -249,40 +197,6 @@
                         const formData = new FormData();
                         formData.append('text', `${message || ''}. ${context || ''}`);
                         formData.append('image', dataURLtoBlob(imagen), 'captura_zwibbler.png');
-                        // Envía la imagen al backend
-                        // fetch('http://localhost:3000/gemini/generate', {
-                        //     method: 'POST',
-                        //     body: formData,
-                        // })
-                        //     .then(response => {
-                        //         if (!response.ok) {
-                        //             throw new Error(`HTTP error! status: ${response.status}`);
-                        //         }
-                        //         return response.json();
-                        //     })
-                        //     .then(data => {
-                        //         const div = document.getElementById('steep-by-steep');
-
-                        //         // No es necesario hacer JSON.parse aquí, ya que response.json() ya lo hace
-                        //         // const data = JSON.parse(rawData);  <-- Esta línea debe ser eliminada
-
-                        //         // Mejora la eliminación de marcadores de código
-                        //         let show = data.response.replace(/```(html)?|```/g, '').trim();
-
-                        //         // Considera usar textContent por seguridad, o sanitiza el HTML antes de insertarlo
-                        //         div.textContent = show; // Más seguro que innerHTML
-
-                        //         // Recargar MathJax para procesar las nuevas ecuaciones
-                        //         MathJax.typesetPromise([div]).catch(err => {
-                        //             console.error('MathJax error:', err.message);
-                        //         });
-
-                        //         console.log('Response data:', data);
-                        //     })
-                        //     .catch(error => {
-                        //         console.error('Fetch error:', error.message);
-                        //         // Aquí podrías añadir código para mostrar un mensaje de error al usuario
-                        //     });
                         fetch('http://localhost:3000/gemini/generate', {
                             method: 'POST',
                             body: formData,
@@ -298,15 +212,6 @@
 
                                 // Mejora la eliminación de marcadores de código
                                 let show = text.replace(/```(html)?|```/g, '').trim();
-
-                                // Considera usar textContent por seguridad, o sanitiza el HTML antes de insertarlo
-                                // div.textContent = show; // Más seguro que innerHTML
-                                // div.innerHTML = show
-                                // // Recargar MathJax para procesar las nuevas ecuaciones
-                                // MathJax.typesetPromise([div]).catch(err => {
-                                //     console.error('MathJax error:', err.message);
-                                // });
-
 
                                 document.getElementById('steep-by-steep').innerHTML = show;
 
@@ -328,22 +233,16 @@
             }
             const currentState = ctx.save();
             if (currentState === initialState) {
-                alert("sin cambios");
                 const mathfield = document.getElementById('mathfield');
                 const context = document.getElementById('context');
                 printResult(mathfield.value, context.value)
             } else {
-                alert("con cambios");
-
                 const mathfield = document.getElementById('mathfield');
                 const context = document.getElementById('context');
-                console.log('mathfield', mathfield.value);
-                console.log('context', context.value);
                 tomarCaptura(mathfield.value, context.value)
             }
         }
     });
-    console.log('adios');
 </script>
 
 
