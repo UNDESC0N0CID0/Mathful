@@ -18,6 +18,7 @@
     <!-- Texto matemáticos -->
     <!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script> -->
 
     <!-- UUID -->
     <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuid.min.js"></script>
@@ -44,6 +45,108 @@
             console.log('checkWhiteboard');
             document.getElementById("zwibbler-check")?.click();
         }
+
+
+        // Función para convertir base64 a Blob
+        function dataURLtoBlob(dataURL) {
+            const byteString = atob(dataURL.split(',')[1]);
+            const mimeString = dataURL.split(',')[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            return new Blob([ab], { type: mimeString });
+        }
+
+        function extractJSONFromString(input) {
+            // Expresión regular para extraer el bloque de JSON
+            const regex = /```json\s*([\s\S]*?)\s*```/;
+            const match = input.match(regex);
+
+            if (match) {
+                const jsonStr = match[1];
+                try {
+                    // Convertir la cadena JSON en un objeto JavaScript
+                    const jsonObj = JSON.parse(jsonStr.replace(/'/g, '"')); // Reemplazar comillas simples por dobles
+                    return jsonObj;
+                } catch (error) {
+                    console.error("Error al decodificar JSON:", error);
+                }
+            }
+            return null;
+        }
+        function printResult(message, context) {
+            var myUUID = uuid.v4();
+            const myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+
+            const raw = JSON.stringify({
+                "message": `${message}. ${context || ''}`
+            });
+
+            const requestOptions = {
+                method: "POST",
+                headers: myHeaders,
+                body: raw,
+                redirect: "follow"
+            };
+            fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
+                .then((response) => response.text())
+                .then(rawData => {
+                    const div = document.getElementById('steep-by-steep');
+                    const data = JSON.parse(rawData);
+                    let show = data.response.replace('```html', '');
+                    show = show.replace('```', '');
+                    div.innerHTML = show; // Inserta el contenido en el div
+                    // Recargar MathJax para procesar las nuevas ecuaciones
+                    MathJax.typesetPromise([div]).catch(function (err) {
+                        console.error('MathJax error: ', err.message);
+                    });
+
+                    console.log('data.response', data.response);
+                }).catch((error) => console.error(error));
+            // .then(response => {
+            //     if (!response.ok) {
+            //         throw new Error(`HTTP error! status: ${response.status}`);
+            //     }
+            //     return response.json();
+            // })
+            // .then(data => {
+            //     const div = document.getElementById('steep-by-steep');
+            //     let show = data.response.replace(/```(html)?|```/g, '').trim();
+
+            //     // Usar una función de sanitización aquí si es necesario renderizar HTML
+            //     div.textContent = show; // Más seguro que innerHTML
+
+            //     // Recargar MathJax para procesar las nuevas ecuaciones
+            //     MathJax.typesetPromise([div]).catch(err => {
+            //         console.error('MathJax error: ', err.message);
+            //     });
+
+            //     console.log('data.response', data.response);
+            // })
+            // .catch(error => {
+            //     console.error('Fetch error:', error.message);
+            //     // Aquí podrías añadir código para mostrar un mensaje de error al usuario
+            // });
+            // fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
+            //     .then((response) => response.text())
+            //     .then(rawData => {
+            //         const div = document.getElementById('steep-by-steep');
+            //         const data = JSON.parse(rawData);
+            //         let show = data.response.replace('```html', '');
+            //         show = show.replace('```', '');
+            //         div.innerHTML = show; // Inserta el contenido en el div
+            //         // Recargar MathJax para procesar las nuevas ecuaciones
+            //         MathJax.typesetPromise([div]).catch(function (err) {
+            //             console.error('MathJax error: ', err.message);
+            //         });
+
+            //         console.log('data.response', data.response);
+            //     }).catch((error) => console.error(error));
+        }
+        console.log('Hola');
     </script>
     <div class="flex justify-center items-center flex-col w-full lg:p-0 p-4 sm:mb-28 mb-0">
         <h1 class="text-3xl font-bold mt-10">Resuelve problemas matemáticos paso a paso</h1>
@@ -110,144 +213,6 @@
 </body>
 
 <script>
-
-    function tomarCaptura() {
-        const componente = document.querySelector('.zwibbler-canvas-holder');
-
-        if (componente) {
-            html2canvas(componente).then(canvas => {
-                // Convierte el canvas a una imagen en formato base64
-                const imagen = canvas.toDataURL("image/png");
-                // Crea un FormData para enviar la imagen
-                const formData = new FormData();
-                formData.append('text', `${message}. ${context || ''}`);
-                formData.append('image', dataURLtoBlob(imagen), 'captura_zwibbler.png');
-                // Envía la imagen al backend
-                fetch('http://localhost:3000/generate', {
-                    method: 'POST',
-                    body: formData,
-                })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        const div = document.getElementById('steep-by-steep');
-
-                        // No es necesario hacer JSON.parse aquí, ya que response.json() ya lo hace
-                        // const data = JSON.parse(rawData);  <-- Esta línea debe ser eliminada
-
-                        // Mejora la eliminación de marcadores de código
-                        let show = data.response.replace(/```(html)?|```/g, '').trim();
-
-                        // Considera usar textContent por seguridad, o sanitiza el HTML antes de insertarlo
-                        div.textContent = show; // Más seguro que innerHTML
-
-                        // Recargar MathJax para procesar las nuevas ecuaciones
-                        MathJax.typesetPromise([div]).catch(err => {
-                            console.error('MathJax error:', err.message);
-                        });
-
-                        console.log('Response data:', data);
-                    })
-                    .catch(error => {
-                        console.error('Fetch error:', error.message);
-                        // Aquí podrías añadir código para mostrar un mensaje de error al usuario
-                    });
-            });
-        } else {
-            console.error('No se encontró el elemento con la clase zwibbler-canvas-holder');
-        }
-    }
-
-    // Función para convertir base64 a Blob
-    function dataURLtoBlob(dataURL) {
-        const byteString = atob(dataURL.split(',')[1]);
-        const mimeString = dataURL.split(',')[0].split(':')[1].split(';')[0];
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-        }
-        return new Blob([ab], { type: mimeString });
-    }
-
-    function extractJSONFromString(input) {
-        // Expresión regular para extraer el bloque de JSON
-        const regex = /```json\s*([\s\S]*?)\s*```/;
-        const match = input.match(regex);
-
-        if (match) {
-            const jsonStr = match[1];
-            try {
-                // Convertir la cadena JSON en un objeto JavaScript
-                const jsonObj = JSON.parse(jsonStr.replace(/'/g, '"')); // Reemplazar comillas simples por dobles
-                return jsonObj;
-            } catch (error) {
-                console.error("Error al decodificar JSON:", error);
-            }
-        }
-        return null;
-    }
-    function printResult(message, context) {
-        var myUUID = uuid.v4();
-        const myHeaders = new Headers();
-        myHeaders.append("Content-Type", "application/json");
-
-        const raw = JSON.stringify({
-            "message": `${message}. ${context || ''}`
-        });
-
-        const requestOptions = {
-            method: "POST",
-            headers: myHeaders,
-            body: raw,
-            redirect: "follow"
-        };
-        fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                const div = document.getElementById('steep-by-steep');
-                let show = data.response.replace(/```(html)?|```/g, '').trim();
-
-                // Usar una función de sanitización aquí si es necesario renderizar HTML
-                div.textContent = show; // Más seguro que innerHTML
-
-                // Recargar MathJax para procesar las nuevas ecuaciones
-                MathJax.typesetPromise([div]).catch(err => {
-                    console.error('MathJax error: ', err.message);
-                });
-
-                console.log('data.response', data.response);
-            })
-            .catch(error => {
-                console.error('Fetch error:', error.message);
-                // Aquí podrías añadir código para mostrar un mensaje de error al usuario
-            });
-        // fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
-        //     .then((response) => response.text())
-        //     .then(rawData => {
-        //         const div = document.getElementById('steep-by-steep');
-        //         const data = JSON.parse(rawData);
-        //         let show = data.response.replace('```html', '');
-        //         show = show.replace('```', '');
-        //         div.innerHTML = show; // Inserta el contenido en el div
-        //         // Recargar MathJax para procesar las nuevas ecuaciones
-        //         MathJax.typesetPromise([div]).catch(function (err) {
-        //             console.error('MathJax error: ', err.message);
-        //         });
-
-        //         console.log('data.response', data.response);
-        //     }).catch((error) => console.error(error));
-    }
-    console.log('Hola');
     Zwibbler.controller("mycontroller", (scope) => {
         let saved = "";
         let initialState = "";
@@ -273,6 +238,94 @@
             ctx.load(saved);
         }
         scope.myCheck = () => {
+            function tomarCaptura(message, context) {
+                const componente = document.querySelector('.zwibbler-canvas-holder');
+
+                if (componente) {
+                    html2canvas(componente).then(canvas => {
+                        // Convierte el canvas a una imagen en formato base64
+                        const imagen = canvas.toDataURL("image/png");
+                        // Crea un FormData para enviar la imagen
+                        const formData = new FormData();
+                        formData.append('text', `${message || ''}. ${context || ''}`);
+                        formData.append('image', dataURLtoBlob(imagen), 'captura_zwibbler.png');
+                        // Envía la imagen al backend
+                        // fetch('http://localhost:3000/gemini/generate', {
+                        //     method: 'POST',
+                        //     body: formData,
+                        // })
+                        //     .then(response => {
+                        //         if (!response.ok) {
+                        //             throw new Error(`HTTP error! status: ${response.status}`);
+                        //         }
+                        //         return response.json();
+                        //     })
+                        //     .then(data => {
+                        //         const div = document.getElementById('steep-by-steep');
+
+                        //         // No es necesario hacer JSON.parse aquí, ya que response.json() ya lo hace
+                        //         // const data = JSON.parse(rawData);  <-- Esta línea debe ser eliminada
+
+                        //         // Mejora la eliminación de marcadores de código
+                        //         let show = data.response.replace(/```(html)?|```/g, '').trim();
+
+                        //         // Considera usar textContent por seguridad, o sanitiza el HTML antes de insertarlo
+                        //         div.textContent = show; // Más seguro que innerHTML
+
+                        //         // Recargar MathJax para procesar las nuevas ecuaciones
+                        //         MathJax.typesetPromise([div]).catch(err => {
+                        //             console.error('MathJax error:', err.message);
+                        //         });
+
+                        //         console.log('Response data:', data);
+                        //     })
+                        //     .catch(error => {
+                        //         console.error('Fetch error:', error.message);
+                        //         // Aquí podrías añadir código para mostrar un mensaje de error al usuario
+                        //     });
+                        fetch('http://localhost:3000/gemini/generate', {
+                            method: 'POST',
+                            body: formData,
+                        })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`HTTP error! status: ${response.status}`);
+                                }
+                                return response.text();  // Cambiado de response.json() a response.text()
+                            })
+                            .then(text => {
+                                const div = document.getElementById('steep-by-steep');
+
+                                // Mejora la eliminación de marcadores de código
+                                let show = text.replace(/```(html)?|```/g, '').trim();
+
+                                // Considera usar textContent por seguridad, o sanitiza el HTML antes de insertarlo
+                                // div.textContent = show; // Más seguro que innerHTML
+                                // div.innerHTML = show
+                                // // Recargar MathJax para procesar las nuevas ecuaciones
+                                // MathJax.typesetPromise([div]).catch(err => {
+                                //     console.error('MathJax error:', err.message);
+                                // });
+
+
+                                document.getElementById('steep-by-steep').innerHTML = show;
+
+                                // Llamar a MathJax para que procese el nuevo contenido
+                                MathJax.typesetPromise([document.getElementById('steep-by-steep')]).then(() => {
+                                    console.log('MathJax renderizado');
+                                }).catch((err) => console.log(err.message));
+
+                                console.log('Response text:', text);
+                            })
+                            .catch(error => {
+                                console.error('Fetch error:', error.message);
+                                // Aquí podrías añadir código para mostrar un mensaje de error al usuario
+                            });
+                    });
+                } else {
+                    console.error('No se encontró el elemento con la clase zwibbler-canvas-holder');
+                }
+            }
             const currentState = ctx.save();
             if (currentState === initialState) {
                 alert("sin cambios");
