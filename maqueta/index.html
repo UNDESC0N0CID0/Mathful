@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathful Hackatón Vercel</title>
+
+    <link rel="stylesheet" href="styles/style.css">
+    <link rel="stylesheet" href="styles/zwibbler.css">
+
+    <!-- Incluir Mathlive desde una CDN -->
+    <!-- <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.css"> -->
+    <script src="https://unpkg.com/mathlive/dist/mathlive.min.js"></script>
+    <!-- Incluir Desmos desde una CDN -->
+    <script src="https://www.desmos.com/api/v1.5/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+
+    <!-- Texto matemáticos -->
+    <!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- UUID -->
+    <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuid.min.js"></script>
+
+    <!-- <script src="js/zwibbler.js"></script> -->
+</head>
+
+<body>
+    <script>
+        function remove() {
+            // document.getElementById("text").value = "";
+            const mathfield = document.getElementById('mathfield');
+            mathfield.value = '';
+            const context = document.getElementById('context');
+            context.value = ''; // Asumiendo que quieres limpiar su valor
+        }
+        function clearAll() {
+            document.getElementById("zwibbler-clear").click();
+        }
+    </script>
+    <div class="flex justify-center items-center flex-col w-full lg:p-0 p-4 sm:mb-28 mb-0">
+        <h1 class="text-3xl font-bold mt-10">Resuelve problemas matemáticos paso a paso</h1>
+        <div class="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mt-10">
+            <div class="col-span-1">
+                <!-- <form> -->
+                <div class="flex flex-col gap-4">
+                    <div class="space-y-2"><label
+                            class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            for=":r0:-form-item">Problema</label>
+                        <!-- <input
+                                class="flex h-10 w-full rounded-md  ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="roomgpt.io" id=":r0:-form-item"
+                                aria-describedby=":r0:-form-item-description" aria-invalid="false" value="" name="url"> -->
+                        <math-field id="mathfield"
+                            class="w-100 border border-input bg-background px-3 py-2 text-sm rounded-md"></math-field>
+                        <!-- <math-field id="mathfield"
+                            class="keyboard flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"></math-field> -->
+                        <p id=":r0:-form-item-description" class="text-sm text-muted-foreground">Escriba el problema
+                            a resolver paso a paso</p>
+                    </div>
+                    <div class="space-y-2">
+                        <label
+                            class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            for="context">Contexto</label>
+                        <textarea
+                            class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                            placeholder="Use el método de integración por sustitución trigonométrica" name="prompt"
+                            id="context" aria-describedby="context-description" aria-invalid="false"></textarea>
+                        <p id="context-description" class="text-sm text-muted-foreground">Puede especificar
+                            el método por el cual desea que se le explique el ejercicio.</p>
+                    </div>
+                    <div class="my-2">
+                        <button
+                            class="items-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-90 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex justify-center max-w-[200px] mx-auto w-full"
+                            type="submit" onclick="scope.myCheck()">Generar</button>
+                        <button id="clear" onclick="clearAll()"
+                            class="items-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-90 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex justify-center max-w-[200px] mx-auto w-full"
+                            type="submit">Limpiar</button>
+                    </div>
+                </div>
+                <!-- </form> -->
+            </div>
+            <div class="col-span-1">
+                <zwibbler z-controller="mycontroller">
+                    <div z-canvas style="max-height:300px"></div>
+                    <button z-click="myCheck()"></button><!-- Verificar -->
+                    <button id="zwibbler-clear" onclick="remove()" z-click="ctx.newDocument()"></button>
+
+                </zwibbler>
+
+            </div>
+        </div>
+        <div class="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mt-10">
+            <div id="steep-by-steep" class="col-span-1">
+
+            </div>
+            <div class="col-span-1">
+                <div id="calculator" style="width: 550; height: 400px;"></div>
+            </div>
+        </div>
+        <!-- Comenta o elimina el siguiente div si quieres ver el primer div ocupando todo el espacio -->
+        <!-- <div style="position: fixed; z-index: 9999; inset: 16px; pointer-events: none;"></div> -->
+    </div>
+</body>
+
+<script>
+
+    function tomarCaptura() {
+        const componente = document.querySelector('.zwibbler-canvas-holder');
+
+        if (componente) {
+            html2canvas(componente).then(canvas => {
+                // Convierte el canvas a una imagen en formato base64
+                const imagen = canvas.toDataURL("image/png");
+                // Crea un FormData para enviar la imagen
+                const formData = new FormData();
+                formData.append('text', `${message}. ${context}`);
+                formData.append('image', dataURLtoBlob(imagen), 'captura_zwibbler.png');
+                // Envía la imagen al backend
+                fetch('http://localhost:3000/generate', {
+                    method: 'POST',
+                    body: formData,
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        const div = document.getElementById('steep-by-steep');
+                        const data = JSON.parse(rawData);
+                        let show = data.response.replace('```html', '');
+                        show = show.replace('```', '');
+                        div.innerHTML = show; // Inserta el contenido en el div
+                        // Recargar MathJax para procesar las nuevas ecuaciones
+                        MathJax.typesetPromise([div]).catch(function (err) {
+                            console.error('MathJax error: ', err.message);
+                        });
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                    });
+            });
+        } else {
+            console.error('No se encontró el elemento con la clase zwibbler-canvas-holder');
+        }
+    }
+
+    // Función para convertir base64 a Blob
+    function dataURLtoBlob(dataURL) {
+        const byteString = atob(dataURL.split(',')[1]);
+        const mimeString = dataURL.split(',')[0].split(':')[1].split(';')[0];
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: mimeString });
+    }
+
+    function extractJSONFromString(input) {
+        // Expresión regular para extraer el bloque de JSON
+        const regex = /```json\s*([\s\S]*?)\s*```/;
+        const match = input.match(regex);
+
+        if (match) {
+            const jsonStr = match[1];
+            try {
+                // Convertir la cadena JSON en un objeto JavaScript
+                const jsonObj = JSON.parse(jsonStr.replace(/'/g, '"')); // Reemplazar comillas simples por dobles
+                return jsonObj;
+            } catch (error) {
+                console.error("Error al decodificar JSON:", error);
+            }
+        }
+        return null;
+    }
+    function printResult(message, context) {
+        var myUUID = uuid.v4();
+        const myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+
+        const raw = JSON.stringify({
+            "message": `${message}. ${context}`
+        });
+
+        const requestOptions = {
+            method: "POST",
+            headers: myHeaders,
+            body: raw,
+            redirect: "follow"
+        };
+        fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
+            .then((response) => response.text())
+            .then(rawData => {
+                const div = document.getElementById('steep-by-steep');
+                const data = JSON.parse(rawData);
+                let show = data.response.replace('```html', '');
+                show = show.replace('```', '');
+                div.innerHTML = show; // Inserta el contenido en el div
+                // Recargar MathJax para procesar las nuevas ecuaciones
+                MathJax.typesetPromise([div]).catch(function (err) {
+                    console.error('MathJax error: ', err.message);
+                });
+
+                console.log('data.response', data.response);
+            }).catch((error) => console.error(error));
+    }
+    Zwibbler.controller("mycontroller", (scope) => {
+        scope.myCheck = () => {
+            alert("Revisando");
+            const currentState = ctx.save();
+            if (currentState === initialState) {
+                const mathfield = document.getElementById('mathfield');
+                const context = document.getElementById('context');
+                printResult(mathfield.value, context)
+            } else {
+                const mathfield = document.getElementById('mathfield');
+                const context = document.getElementById('context');
+                tomarCaptura(mathfield.value, context)
+            }
+        }
+    });
+</script>
+
+<script src="https://zwibbler.com/zwibbler-demo.js"></script>
+<script>
+    var elt = document.getElementById('calculator');
+    var calculator = Desmos.GraphingCalculator(elt);
+    calculator.setExpression({ id: 'graph1', latex: 'y=x^3' });
+    calculator.setExpression({ id: 'graph2', latex: 'y=x^2' });
+    calculator.setExpression({ id: 'graph3', latex: 'y=x' });
+    calculator.setExpression({ id: 'graph1', latex: 'y=x^3' });
+    // ```json [ { "id": "graph1", "latex": "y=sin(x)" }, { "id": "graph2", "latex": "y=-sin(x)" } ] ```
+
+</script>
+
+</html>
