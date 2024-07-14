@@ -21,8 +21,10 @@
 
     <!-- UUID -->
     <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuid.min.js"></script>
-
+    <script src="https://zwibbler.com/zwibbler-demo.js"></script>
     <!-- <script src="js/zwibbler.js"></script> -->
+
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
 
 <body>
@@ -35,7 +37,12 @@
             context.value = ''; // Asumiendo que quieres limpiar su valor
         }
         function clearAll() {
-            document.getElementById("zwibbler-clear").click();
+            console.log('clearAll');
+            document.getElementById("zwibbler-clear")?.click();
+        }
+        function checkWhiteboard() {
+            console.log('checkWhiteboard');
+            document.getElementById("zwibbler-check")?.click();
         }
     </script>
     <div class="flex justify-center items-center flex-col w-full lg:p-0 p-4 sm:mb-28 mb-0">
@@ -72,7 +79,7 @@
                     <div class="my-2">
                         <button
                             class="items-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-90 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex justify-center max-w-[200px] mx-auto w-full"
-                            type="submit" onclick="scope.myCheck()">Generar</button>
+                            type="submit" onclick="checkWhiteboard()">Explicar</button>
                         <button id="clear" onclick="clearAll()"
                             class="items-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-90 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex justify-center max-w-[200px] mx-auto w-full"
                             type="submit">Limpiar</button>
@@ -83,9 +90,8 @@
             <div class="col-span-1">
                 <zwibbler z-controller="mycontroller">
                     <div z-canvas style="max-height:300px"></div>
-                    <button z-click="myCheck()"></button><!-- Verificar -->
+                    <button id="zwibbler-check" z-click="myCheck()">Verificar</button>
                     <button id="zwibbler-clear" onclick="remove()" z-click="ctx.newDocument()"></button>
-
                 </zwibbler>
 
             </div>
@@ -114,27 +120,41 @@
                 const imagen = canvas.toDataURL("image/png");
                 // Crea un FormData para enviar la imagen
                 const formData = new FormData();
-                formData.append('text', `${message}. ${context}`);
+                formData.append('text', `${message}. ${context || ''}`);
                 formData.append('image', dataURLtoBlob(imagen), 'captura_zwibbler.png');
                 // Envía la imagen al backend
                 fetch('http://localhost:3000/generate', {
                     method: 'POST',
                     body: formData,
                 })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         const div = document.getElementById('steep-by-steep');
-                        const data = JSON.parse(rawData);
-                        let show = data.response.replace('```html', '');
-                        show = show.replace('```', '');
-                        div.innerHTML = show; // Inserta el contenido en el div
+
+                        // No es necesario hacer JSON.parse aquí, ya que response.json() ya lo hace
+                        // const data = JSON.parse(rawData);  <-- Esta línea debe ser eliminada
+
+                        // Mejora la eliminación de marcadores de código
+                        let show = data.response.replace(/```(html)?|```/g, '').trim();
+
+                        // Considera usar textContent por seguridad, o sanitiza el HTML antes de insertarlo
+                        div.textContent = show; // Más seguro que innerHTML
+
                         // Recargar MathJax para procesar las nuevas ecuaciones
-                        MathJax.typesetPromise([div]).catch(function (err) {
-                            console.error('MathJax error: ', err.message);
+                        MathJax.typesetPromise([div]).catch(err => {
+                            console.error('MathJax error:', err.message);
                         });
+
+                        console.log('Response data:', data);
                     })
-                    .catch((error) => {
-                        console.error('Error:', error);
+                    .catch(error => {
+                        console.error('Fetch error:', error.message);
+                        // Aquí podrías añadir código para mostrar un mensaje de error al usuario
                     });
             });
         } else {
@@ -177,7 +197,7 @@
         myHeaders.append("Content-Type", "application/json");
 
         const raw = JSON.stringify({
-            "message": `${message}. ${context}`
+            "message": `${message}. ${context || ''}`
         });
 
         const requestOptions = {
@@ -187,39 +207,93 @@
             redirect: "follow"
         };
         fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
-            .then((response) => response.text())
-            .then(rawData => {
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
                 const div = document.getElementById('steep-by-steep');
-                const data = JSON.parse(rawData);
-                let show = data.response.replace('```html', '');
-                show = show.replace('```', '');
-                div.innerHTML = show; // Inserta el contenido en el div
+                let show = data.response.replace(/```(html)?|```/g, '').trim();
+
+                // Usar una función de sanitización aquí si es necesario renderizar HTML
+                div.textContent = show; // Más seguro que innerHTML
+
                 // Recargar MathJax para procesar las nuevas ecuaciones
-                MathJax.typesetPromise([div]).catch(function (err) {
+                MathJax.typesetPromise([div]).catch(err => {
                     console.error('MathJax error: ', err.message);
                 });
 
                 console.log('data.response', data.response);
-            }).catch((error) => console.error(error));
+            })
+            .catch(error => {
+                console.error('Fetch error:', error.message);
+                // Aquí podrías añadir código para mostrar un mensaje de error al usuario
+            });
+        // fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
+        //     .then((response) => response.text())
+        //     .then(rawData => {
+        //         const div = document.getElementById('steep-by-steep');
+        //         const data = JSON.parse(rawData);
+        //         let show = data.response.replace('```html', '');
+        //         show = show.replace('```', '');
+        //         div.innerHTML = show; // Inserta el contenido en el div
+        //         // Recargar MathJax para procesar las nuevas ecuaciones
+        //         MathJax.typesetPromise([div]).catch(function (err) {
+        //             console.error('MathJax error: ', err.message);
+        //         });
+
+        //         console.log('data.response', data.response);
+        //     }).catch((error) => console.error(error));
     }
+    console.log('Hola');
     Zwibbler.controller("mycontroller", (scope) => {
+        let saved = "";
+        let initialState = "";
+        const ctx = scope.ctx;
+
+        scope.ctx.newDocument(); // Inicializa el documento al cargar
+
+        // Guarda el estado inicial cuando se carga la pizarra
+        ctx.newDocument();
+        initialState = ctx.save();
+
+        scope.mySave = () => {
+            saved = ctx.save();
+            alert("Guardado: " + saved);
+        }
+
+        scope.myOpen = () => {
+            if (!saved) {
+                alert("Por favor, guarda primero.");
+                return;
+            }
+
+            ctx.load(saved);
+        }
         scope.myCheck = () => {
-            alert("Revisando");
             const currentState = ctx.save();
             if (currentState === initialState) {
+                alert("sin cambios");
                 const mathfield = document.getElementById('mathfield');
                 const context = document.getElementById('context');
-                printResult(mathfield.value, context)
+                printResult(mathfield.value, context.value)
             } else {
+                alert("con cambios");
+
                 const mathfield = document.getElementById('mathfield');
                 const context = document.getElementById('context');
-                tomarCaptura(mathfield.value, context)
+                console.log('mathfield', mathfield.value);
+                console.log('context', context.value);
+                tomarCaptura(mathfield.value, context.value)
             }
         }
     });
+    console.log('adios');
 </script>
 
-<script src="https://zwibbler.com/zwibbler-demo.js"></script>
+
 <script>
     var elt = document.getElementById('calculator');
     var calculator = Desmos.GraphingCalculator(elt);
