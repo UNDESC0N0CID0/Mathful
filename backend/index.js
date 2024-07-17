@@ -42,6 +42,20 @@ app.post('/generate-description', upload.array('files'), async (req, res) => {
     }
 });
 
+app.post('/generate-message', express.json(), async (req, res) => {
+    const text = req.body.text;
+
+    try {
+        const result = await generateText({
+            model: google('models/gemini-pro'),
+            prompt: text,
+        });
+        res.send(result.text);
+    } catch (error) {
+        res.status(500).send({ error: 'Failed to generate message' });
+    }
+});
+
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
 });
