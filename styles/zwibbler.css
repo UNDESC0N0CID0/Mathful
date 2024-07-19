@@ -1,0 +1,18 @@
+zwibbler {
+    display: flex;
+    height: 400px;
+    flex-flow: row nowrap;
+}
+
+.tools {
+    display: flex;
+    flex-flow: column;
+}
+
+button.selected {
+    background: aliceblue;
+}
+
+[z-canvas] {
+    flex: 1 1 auto;
+}
