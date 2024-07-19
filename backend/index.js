@@ -3,8 +3,7 @@ import multer from 'multer';
 import { google } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import dotenv from 'dotenv';
-import fs from 'node:fs';
-import cors from 'cors'
+import cors from 'cors';
 
 dotenv.config();
 
@@ -16,8 +15,9 @@ app.use(cors({
 
 const upload = multer();
 
+const contento = `Eres un profesor de matemáticas, si te envían un problema resuelvo paso a paso, retorna html para los titulos y la estructura de la respuesta, para escribir matemáticas usa este formato \\[x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{2a}\\] si consideras necesario graficar algo envíame los puntos o las funciones en un json dentro de una etiqueta <script>[{ id: 'graph1', latex: 'y=/x^3' },{ id: 'graph2', latex: 'y=/cos(x)' }]</script> yo voy a hacer un parseo, si no lo requieres no lo envies`;
+
 async function generateDescription(texto, files) {
-    const contento = `Eres un profesor de matemáticas, si te envían un problema resuelvo paso a paso, retorna html para los titulos y la estructura de la respuesta, para escribir matemáticas usa este formato \\[x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{2a}\\] si consideras necesario graficar algo envíame los puntos o las funciones en un json dentro de una etiqueta <script>[{ id: 'graph1', latex: 'y=/x^3' },{ id: 'graph2', latex: 'y=/cos(x)' }]</script> yo voy a hacer un parseo, si no lo requieres no lo envies`
     const messages = [
         {
             role: 'user',
@@ -29,7 +29,7 @@ async function generateDescription(texto, files) {
     ];
 
     const result = await generateText({
-        model: google('models/gemini-pro-vision'),
+        model: google('models/gemini-1.5-pro'),
         maxTokens: 512,
         messages: messages,
     });
@@ -40,27 +40,26 @@ async function generateDescription(texto, files) {
 app.post('/generate-description', upload.array('files'), async (req, res) => {
     const text = req.body.message;
     const files = req.files;
-    const contento = `Eres un profesor de matemáticas, si te envían un problema resuelvo paso a paso, retorna html para los titulos y la estructura de la respuesta, para escribir matemáticas usa este formato \\[x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{2a}\\] si consideras necesario graficar algo envíame los puntos o las funciones en un json dentro de una etiqueta <script>[{ id: 'graph1', latex: 'y=/x^3' },{ id: 'graph2', latex: 'y=/cos(x)' }]</script> yo voy a hacer un parseo, si no lo requieres no lo envies`
-    const question = `${contento}\n\nPregunta o problema: ${text}`
     try {
-        const description = await generateDescription(question, files);
+        const description = await generateDescription(text, files);
         res.send(description);
     } catch (error) {
+        console.error('Error generating description:', error);
         res.status(500).send({ error: 'Failed to generate description' });
     }
 });
 
 app.post('/generate-message', express.json(), async (req, res) => {
     const text = req.body.message;
-    const contento = `Eres un profesor de matemáticas, si te envían un problema resuelvo paso a paso, retorna html para los titulos y la estructura de la respuesta, para escribir matemáticas usa este formato \\[x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{2a}\\] si consideras necesario graficar algo envíame los puntos o las funciones en un json dentro de una etiqueta <script>[{ id: 'graph1', latex: 'y=/x^3' },{ id: 'graph2', latex: 'y=/cos(x)' }]</script> yo voy a hacer un parseo, si no lo requieres no lo envies`
-    const question = `${contento}\n\nPregunta o problema: ${text}`
+    const question = `${contento}\n\nPregunta o problema: ${text}`;
     try {
         const result = await generateText({
-            model: google('models/gemini-pro'),
+            model: google('models/gemini-1.5-pro'),
             prompt: question,
         });
         res.send(result.text);
     } catch (error) {
+        console.error('Error generating message:', error);
         res.status(500).send({ error: 'Failed to generate message' });
     }
 });
