@@ -17,8 +17,7 @@
     <!-- Texto matemáticos -->
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    <!-- UUID -->
-    <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuid.min.js"></script>
+    <!-- zwibbler -->
     <script src="https://zwibbler.com/zwibbler-demo.js"></script>
 
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -26,19 +25,20 @@
 
 <body>
     <script>
+        var BACKEND_URL = 'http://localhost:3000';
         const remove = () => {
             document.getElementById('mathfield').value = '';
             document.getElementById('context').value = '';
         };
 
         const clearAll = () => {
-            console.log('clearAll');
             document.getElementById("zwibbler-clear")?.click();
+            document.getElementById('steep-by-steep').innerHTML = '';
         };
 
         const checkWhiteboard = () => {
-            console.log('checkWhiteboard');
             document.getElementById("zwibbler-check")?.click();
+            document.getElementById('steep-by-steep').innerHTML = '';
         };
 
         const dataURLtoBlob = (dataURL) => {
@@ -67,7 +67,6 @@
         };
 
         const printResult = (message, context) => {
-            const myUUID = uuid.v4();
             const myHeaders = new Headers();
             myHeaders.append("Content-Type", "application/json");
 
@@ -81,11 +80,11 @@
                 body: raw,
                 redirect: "follow"
             };
-
-            fetch(`http://127.0.0.1:3000/generate-message`, requestOptions)
+            document.getElementById('loader').style.display = 'inline-block';
+            fetch(`${BACKEND_URL}/generate-message`, requestOptions)
                 .then((response) => response.text())
                 .then(rawData => {
-                    console.log('Raw response:', rawData);
+                    document.getElementById('loader').style.display = 'none';
                     const div = document.getElementById('steep-by-steep');
                     let show = rawData.replace(/```html/, '').replace(/```/, '').trim();
                     div.innerHTML = show;
@@ -93,10 +92,11 @@
                     MathJax.typesetPromise([div]).catch(function (err) {
                         console.error('MathJax error: ', err.message);
                     });
-
-                    console.log('Response:', rawData);
                 })
-                .catch((error) => console.error('Fetch error:', error));
+                .catch((error) => {
+                    console.error('Fetch error:', error);
+                    document.getElementById('loader').style.display = 'none';
+                });
         };
 
         Zwibbler.controller("mycontroller", (scope) => {
@@ -125,11 +125,12 @@
                     const componente = document.querySelector('.zwibbler-canvas-holder');
                     if (componente) {
                         html2canvas(componente).then(canvas => {
+                            document.getElementById('loader').style.display = 'inline-block';
                             const imagen = canvas.toDataURL("image/png");
                             const formData = new FormData();
                             formData.append('text', `${message || ''}. ${context || ''}`);
                             formData.append('files', dataURLtoBlob(imagen), 'captura_zwibbler.png'); // Cambiado a 'files'
-                            fetch('http://localhost:3000/generate-description', {
+                            fetch(`${BACKEND_URL}/generate-description`, {
                                 method: 'POST',
                                 body: formData,
                             })
@@ -140,15 +141,16 @@
                                     return response.text();
                                 })
                                 .then(text => {
+                                    document.getElementById('loader').style.display = 'none';
                                     const div = document.getElementById('steep-by-steep');
                                     let show = text.replace(/```(html)?|```/g, '').trim();
                                     document.getElementById('steep-by-steep').innerHTML = show;
                                     MathJax.typesetPromise([document.getElementById('steep-by-steep')]).then(() => {
                                         console.log('MathJax renderizado');
                                     }).catch((err) => console.log(err.message));
-                                    console.log('Response text:', text);
                                 })
                                 .catch(error => {
+                                    document.getElementById('loader').style.display = 'none';
                                     console.error('Fetch error:', error.message);
                                 });
                         });
@@ -223,8 +225,10 @@
         </div>
         <div class="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mt-10">
             <div id="steep-by-steep" class="col-span-1"></div>
+            <!-- HTML: Asigna un id al cargador -->
+            <span class="loader col-span-1" style="display: none;" id="loader"></span>
             <div class="col-span-1">
-                <div id="calculator" style="width: 550px; height: 400px;"></div>
+                <div id="calculator" style="width: 550px; height: 400px;display: none;"></div>
             </div>
         </div>
     </div>
