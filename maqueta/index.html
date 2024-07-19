@@ -10,44 +10,38 @@
     <link rel="stylesheet" href="styles/zwibbler.css">
 
     <!-- Incluir Mathlive desde una CDN -->
-    <!-- <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.css"> -->
     <script src="https://unpkg.com/mathlive/dist/mathlive.min.js"></script>
     <!-- Incluir Desmos desde una CDN -->
     <script src="https://www.desmos.com/api/v1.5/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
 
     <!-- Texto matemáticos -->
-    <!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script> -->
 
     <!-- UUID -->
     <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuid.min.js"></script>
     <script src="https://zwibbler.com/zwibbler-demo.js"></script>
-    <!-- <script src="js/zwibbler.js"></script> -->
 
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
 
 <body>
     <script>
-        function remove() {
-            const mathfield = document.getElementById('mathfield');
-            mathfield.value = '';
-            const context = document.getElementById('context');
-            context.value = ''; // Asumiendo que quieres limpiar su valor
-        }
-        function clearAll() {
+        const remove = () => {
+            document.getElementById('mathfield').value = '';
+            document.getElementById('context').value = '';
+        };
+
+        const clearAll = () => {
             console.log('clearAll');
             document.getElementById("zwibbler-clear")?.click();
-        }
-        function checkWhiteboard() {
+        };
+
+        const checkWhiteboard = () => {
             console.log('checkWhiteboard');
             document.getElementById("zwibbler-check")?.click();
-        }
+        };
 
-
-        // Función para convertir base64 a Blob
-        function dataURLtoBlob(dataURL) {
+        const dataURLtoBlob = (dataURL) => {
             const byteString = atob(dataURL.split(',')[1]);
             const mimeString = dataURL.split(',')[0].split(':')[1].split(';')[0];
             const ab = new ArrayBuffer(byteString.length);
@@ -56,27 +50,24 @@
                 ia[i] = byteString.charCodeAt(i);
             }
             return new Blob([ab], { type: mimeString });
-        }
+        };
 
-        function extractJSONFromString(input) {
-            // Expresión regular para extraer el bloque de JSON
+        const extractJSONFromString = (input) => {
             const regex = /```json\s*([\s\S]*?)\s*```/;
             const match = input.match(regex);
-
             if (match) {
                 const jsonStr = match[1];
                 try {
-                    // Convertir la cadena JSON en un objeto JavaScript
-                    const jsonObj = JSON.parse(jsonStr.replace(/'/g, '"')); // Reemplazar comillas simples por dobles
-                    return jsonObj;
+                    return JSON.parse(jsonStr.replace(/'/g, '"'));
                 } catch (error) {
                     console.error("Error al decodificar JSON:", error);
                 }
             }
             return null;
-        }
-        function printResult(message, context) {
-            var myUUID = uuid.v4();
+        };
+
+        const printResult = (message, context) => {
+            const myUUID = uuid.v4();
             const myHeaders = new Headers();
             myHeaders.append("Content-Type", "application/json");
 
@@ -90,35 +81,116 @@
                 body: raw,
                 redirect: "follow"
             };
-            fetch(`http://127.0.0.1:3000/gemini/chat/${myUUID}`, requestOptions)
+
+            fetch(`http://127.0.0.1:3000/generate-message`, requestOptions)
                 .then((response) => response.text())
                 .then(rawData => {
+                    console.log('Raw response:', rawData);
                     const div = document.getElementById('steep-by-steep');
-                    const data = JSON.parse(rawData);
-                    let show = data.response.replace('```html', '');
-                    show = show.replace('```', '');
-                    div.innerHTML = show; // Inserta el contenido en el div
-                    // Recargar MathJax para procesar las nuevas ecuaciones
+                    let show = rawData.replace(/```html/, '').replace(/```/, '').trim();
+                    div.innerHTML = show;
+
                     MathJax.typesetPromise([div]).catch(function (err) {
                         console.error('MathJax error: ', err.message);
                     });
 
-                    console.log('data.response', data.response);
-                }).catch((error) => console.error(error));
-        }
+                    console.log('Response:', rawData);
+                })
+                .catch((error) => console.error('Fetch error:', error));
+        };
+
+        Zwibbler.controller("mycontroller", (scope) => {
+            const ctx = scope.ctx;
+            let saved = "";
+            let initialState = "";
+
+            ctx.newDocument();
+            initialState = ctx.save();
+
+            scope.mySave = () => {
+                saved = ctx.save();
+            };
+
+            scope.myOpen = () => {
+                if (!saved) {
+                    alert("Por favor, guarda primero.");
+                    return;
+                }
+
+                ctx.load(saved);
+            };
+
+            scope.myCheck = () => {
+                const tomarCaptura = (message, context) => {
+                    const componente = document.querySelector('.zwibbler-canvas-holder');
+                    if (componente) {
+                        html2canvas(componente).then(canvas => {
+                            const imagen = canvas.toDataURL("image/png");
+                            const formData = new FormData();
+                            formData.append('text', `${message || ''}. ${context || ''}`);
+                            formData.append('files', dataURLtoBlob(imagen), 'captura_zwibbler.png'); // Cambiado a 'files'
+                            fetch('http://localhost:3000/generate-description', {
+                                method: 'POST',
+                                body: formData,
+                            })
+                                .then(response => {
+                                    if (!response.ok) {
+                                        throw new Error(`HTTP error! status: ${response.status}`);
+                                    }
+                                    return response.text();
+                                })
+                                .then(text => {
+                                    const div = document.getElementById('steep-by-steep');
+                                    let show = text.replace(/```(html)?|```/g, '').trim();
+                                    document.getElementById('steep-by-steep').innerHTML = show;
+                                    MathJax.typesetPromise([document.getElementById('steep-by-steep')]).then(() => {
+                                        console.log('MathJax renderizado');
+                                    }).catch((err) => console.log(err.message));
+                                    console.log('Response text:', text);
+                                })
+                                .catch(error => {
+                                    console.error('Fetch error:', error.message);
+                                });
+                        });
+                    } else {
+                        console.error('No se encontró el elemento con la clase zwibbler-canvas-holder');
+                    }
+                };
+
+
+                const currentState = ctx.save();
+                const mathfield = document.getElementById('mathfield');
+                const context = document.getElementById('context');
+
+                if (currentState === initialState) {
+                    printResult(mathfield.value, context.value);
+                } else {
+                    tomarCaptura(mathfield.value, context.value);
+                }
+            };
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const elt = document.getElementById('calculator');
+            const calculator = Desmos.GraphingCalculator(elt);
+            calculator.setExpression({ id: 'graph1', latex: 'y=x^3' });
+            calculator.setExpression({ id: 'graph2', latex: 'y=x^2' });
+            calculator.setExpression({ id: 'graph3', latex: 'y=x' });
+        });
     </script>
+
     <div class="flex justify-center items-center flex-col w-full lg:p-0 p-4 sm:mb-28 mb-0">
         <h1 class="text-3xl font-bold mt-10">Resuelve problemas matemáticos paso a paso</h1>
         <div class="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mt-10">
             <div class="col-span-1">
                 <div class="flex flex-col gap-4">
-                    <div class="space-y-2"><label
+                    <div class="space-y-2">
+                        <label
                             class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            for=":r0:-form-item">Problema</label>
+                            for="mathfield">Problema</label>
                         <math-field id="mathfield"
                             class="w-100 border border-input bg-background px-3 py-2 text-sm rounded-md"></math-field>
-                        <p id=":r0:-form-item-description" class="text-sm text-muted-foreground">Escriba el problema
-                            a resolver paso a paso</p>
+                        <p class="text-sm text-muted-foreground">Escriba el problema a resolver paso a paso</p>
                     </div>
                     <div class="space-y-2">
                         <label
@@ -128,16 +200,16 @@
                             class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                             placeholder="Use el método de integración por sustitución trigonométrica" name="prompt"
                             id="context" aria-describedby="context-description" aria-invalid="false"></textarea>
-                        <p id="context-description" class="text-sm text-muted-foreground">Puede especificar
-                            el método por el cual desea que se le explique el ejercicio.</p>
+                        <p class="text-sm text-muted-foreground">Puede especificar el método por el cual desea que se le
+                            explique el ejercicio.</p>
                     </div>
                     <div class="my-2">
                         <button
                             class="items-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-90 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex justify-center max-w-[200px] mx-auto w-full"
-                            type="submit" onclick="checkWhiteboard()">Explicar</button>
+                            type="button" onclick="checkWhiteboard()">Explicar</button>
                         <button id="clear" onclick="clearAll()"
                             class="items-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-90 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex justify-center max-w-[200px] mx-auto w-full"
-                            type="submit">Limpiar</button>
+                            type="button">Limpiar</button>
                     </div>
                 </div>
             </div>
@@ -147,114 +219,15 @@
                     <button id="zwibbler-check" z-click="myCheck()"></button>
                     <button id="zwibbler-clear" onclick="remove()" z-click="ctx.newDocument()"></button>
                 </zwibbler>
-
             </div>
         </div>
         <div class="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mt-10">
-            <div id="steep-by-steep" class="col-span-1">
-
-            </div>
+            <div id="steep-by-steep" class="col-span-1"></div>
             <div class="col-span-1">
-                <div id="calculator" style="width: 550; height: 400px;"></div>
+                <div id="calculator" style="width: 550px; height: 400px;"></div>
             </div>
         </div>
     </div>
 </body>
-
-<script>
-    Zwibbler.controller("mycontroller", (scope) => {
-        let saved = "";
-        let initialState = "";
-        const ctx = scope.ctx;
-
-        scope.ctx.newDocument(); // Inicializa el documento al cargar
-
-        // Guarda el estado inicial cuando se carga la pizarra
-        ctx.newDocument();
-        initialState = ctx.save();
-
-        scope.mySave = () => {
-            saved = ctx.save();
-        }
-
-        scope.myOpen = () => {
-            if (!saved) {
-                alert("Por favor, guarda primero.");
-                return;
-            }
-
-            ctx.load(saved);
-        }
-        scope.myCheck = () => {
-            function tomarCaptura(message, context) {
-                const componente = document.querySelector('.zwibbler-canvas-holder');
-
-                if (componente) {
-                    html2canvas(componente).then(canvas => {
-                        // Convierte el canvas a una imagen en formato base64
-                        const imagen = canvas.toDataURL("image/png");
-                        // Crea un FormData para enviar la imagen
-                        const formData = new FormData();
-                        formData.append('text', `${message || ''}. ${context || ''}`);
-                        formData.append('image', dataURLtoBlob(imagen), 'captura_zwibbler.png');
-                        fetch('http://localhost:3000/gemini/generate', {
-                            method: 'POST',
-                            body: formData,
-                        })
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error(`HTTP error! status: ${response.status}`);
-                                }
-                                return response.text();  // Cambiado de response.json() a response.text()
-                            })
-                            .then(text => {
-                                const div = document.getElementById('steep-by-steep');
-
-                                // Mejora la eliminación de marcadores de código
-                                let show = text.replace(/```(html)?|```/g, '').trim();
-
-                                document.getElementById('steep-by-steep').innerHTML = show;
-
-                                // Llamar a MathJax para que procese el nuevo contenido
-                                MathJax.typesetPromise([document.getElementById('steep-by-steep')]).then(() => {
-                                    console.log('MathJax renderizado');
-                                }).catch((err) => console.log(err.message));
-
-                                console.log('Response text:', text);
-                            })
-                            .catch(error => {
-                                console.error('Fetch error:', error.message);
-                                // Aquí podrías añadir código para mostrar un mensaje de error al usuario
-                            });
-                    });
-                } else {
-                    console.error('No se encontró el elemento con la clase zwibbler-canvas-holder');
-                }
-            }
-            const currentState = ctx.save();
-            if (currentState === initialState) {
-                const mathfield = document.getElementById('mathfield');
-                const context = document.getElementById('context');
-                printResult(mathfield.value, context.value)
-            } else {
-                const mathfield = document.getElementById('mathfield');
-                const context = document.getElementById('context');
-                tomarCaptura(mathfield.value, context.value)
-            }
-        }
-    });
-</script>
-
-
-<script>
-    var elt = document.getElementById('calculator');
-    var calculator = Desmos.GraphingCalculator(elt);
-    calculator.setExpression({ id: 'graph1', latex: 'y=x^3' });
-    calculator.setExpression({ id: 'graph2', latex: 'y=x^2' });
-    calculator.setExpression({ id: 'graph3', latex: 'y=x' });
-    calculator.setExpression({ id: 'graph1', latex: 'y=x^3' });
-    // ```json [ { "id": "graph1", "latex": "y=sin(x)" }, { "id": "graph2", "latex": "y=-sin(x)" } ] ```
-
-</script>
 
 </html>
